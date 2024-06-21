@@ -1,9 +1,30 @@
 package asia.fourtitude.interviewq.jumble.core;
 
-import java.io.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.io.ClassPathResource;
 
 public class JumbleEngine {
+
+    private static final String FILE_NAME = "words.txt";
+    
+    Logger logger = LoggerFactory.getLogger(JumbleEngine.class);
 
     /**
      * From the input `word`, produces/generates a copy which has the same
@@ -19,11 +40,15 @@ public class JumbleEngine {
      * @return  The scrambled output/letters.
      */
     public String scramble(String word) {
-        /*
-         * Refer to the method's Javadoc (above) and implement accordingly.
-         * Must pass the corresponding unit tests.
-         */
-        throw new UnsupportedOperationException("to be implemented");
+        List<String> wordCharacter = Arrays.asList(word.split(StringUtils.EMPTY));
+
+        Collections.shuffle(wordCharacter);
+
+        StringBuilder scrambleWord = new StringBuilder();
+
+        wordCharacter.forEach(scrambleWord::append);
+
+        return scrambleWord.toString();
     }
 
     /**
@@ -40,15 +65,39 @@ public class JumbleEngine {
      * c) using "try-with-resources" functionality/statement
      * d) pass unit test: JumbleEngineTest#palindrome()
      *
-     * @return  The list of palindrome words found in system/engine.
+     * @return  The list of palindrome words found in system/engine. 
      * @see https://www.google.com/search?q=palindrome+meaning
      */
     public Collection<String> retrievePalindromeWords() {
-        /*
-         * Refer to the method's Javadoc (above) and implement accordingly.
-         * Must pass the corresponding unit tests.
-         */
-        throw new UnsupportedOperationException("to be implemented");
+        List<String> palindromeWords = new ArrayList<>();
+
+        try(InputStream inputStream = new ClassPathResource(FILE_NAME).getInputStream();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream)) ) {
+
+            Stream<String> wordReader = reader.lines();  
+
+            palindromeWords = wordReader.filter(word -> {
+
+                if(word.length() < 2) 
+                    return false;
+
+                int midlePoint = word.length() / 2;
+
+                StringBuilder sb = new StringBuilder(word.substring(midlePoint));
+
+                String leftWord = word.length() % 2 != 0 ? word.substring(0, midlePoint + 1)
+                        : word.substring(0, midlePoint);
+
+                return leftWord.equals(sb.reverse().toString());
+
+            }).collect(Collectors.toList());
+
+
+        } catch (IOException e) {
+            logger.error("Error read words.txt");
+        }
+
+        return palindromeWords;
     }
 
     /**
@@ -64,11 +113,29 @@ public class JumbleEngine {
      *          Or null if none matching.
      */
     public String pickOneRandomWord(Integer length) {
-        /*
-         * Refer to the method's Javadoc (above) and implement accordingly.
-         * Must pass the corresponding unit tests.
-         */
-        throw new UnsupportedOperationException("to be implemented");
+        String randomWords = null;
+
+        if(length == null)
+            return StringUtils.EMPTY;
+
+        try(InputStream inputStream = new ClassPathResource(FILE_NAME).getInputStream();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream)) ) {
+
+            Stream<String> wordReader = reader.lines();  
+
+            List<String> wordMatchLength = wordReader.filter(word -> word.length() == length)
+                    .collect(Collectors.toList());
+
+            if(!wordMatchLength.isEmpty()) {
+                int randomIndex = (int) Math.round(Math.random() * (wordMatchLength.size() - 1));
+
+                randomWords = wordMatchLength.get(randomIndex);
+            }
+        } catch (IOException e) {
+            logger.error("Error read words.txt");
+        }
+
+        return randomWords;
     }
 
     /**
@@ -84,11 +151,22 @@ public class JumbleEngine {
      * @return  true if `word` exists in internal word list.
      */
     public boolean exists(String word) {
-        /*
-         * Refer to the method's Javadoc (above) and implement accordingly.
-         * Must pass the corresponding unit tests.
-         */
-        throw new UnsupportedOperationException("to be implemented");
+        boolean found = false;
+
+        try(InputStream inputStream = new ClassPathResource(FILE_NAME).getInputStream();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream)) ) {
+
+            Stream<String> wordReader = reader.lines();  
+
+            found = StringUtils.isNotBlank(wordReader.filter(searchWord -> searchWord.equalsIgnoreCase(word))
+                    .findFirst()
+                    .orElse(null));
+
+        } catch (IOException e) {
+            logger.error("Error read words.txt");
+        }
+
+        return found;
     }
 
     /**
@@ -108,11 +186,24 @@ public class JumbleEngine {
      * @return  The list of words matching the prefix.
      */
     public Collection<String> wordsMatchingPrefix(String prefix) {
-        /*
-         * Refer to the method's Javadoc (above) and implement accordingly.
-         * Must pass the corresponding unit tests.
-         */
-        throw new UnsupportedOperationException("to be implemented");
+        List<String> wordsMatchingPrefix = new ArrayList<>();
+
+        if(StringUtils.isBlank(prefix) || !prefix.matches("[a-zA-Z]*")) 
+            return wordsMatchingPrefix; 
+
+        try(InputStream inputStream = new ClassPathResource(FILE_NAME).getInputStream();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream)) ) {
+
+            Stream<String> wordReader = reader.lines();  
+
+            wordsMatchingPrefix = wordReader.filter(word -> word.toLowerCase().startsWith(prefix.toLowerCase()          
+            )).collect(Collectors.toList());
+
+        } catch (IOException e) {
+            logger.error("Error read words.txt");
+        }
+
+        return wordsMatchingPrefix;
     }
 
     /**
@@ -140,11 +231,37 @@ public class JumbleEngine {
      * @return  The list of words matching the searching criteria.
      */
     public Collection<String> searchWords(Character startChar, Character endChar, Integer length) {
-        /*
-         * Refer to the method's Javadoc (above) and implement accordingly.
-         * Must pass the corresponding unit tests.
-         */
-        throw new UnsupportedOperationException("to be implemented");
+        List<String> wordsList = new ArrayList<>();
+
+        if(startChar == null && endChar == null && length == null)
+            return wordsList;
+
+        if((startChar != null && !Character.isLetter(startChar)) ||
+                (endChar != null && !Character.isLetter(endChar)) ||
+                (length != null && length < 1))
+            return wordsList; 
+
+        try(InputStream inputStream = new ClassPathResource(FILE_NAME).getInputStream();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream)) ) {
+
+            Stream<String> wordReader = reader.lines();  
+
+            if(startChar != null)
+                wordReader = wordReader.filter(word -> word.toLowerCase().startsWith(startChar.toString().toLowerCase()));
+
+            if(endChar != null)
+                wordReader = wordReader.filter(word -> word.toLowerCase().endsWith(endChar.toString().toLowerCase()));
+
+            if(length != null)
+                wordReader = wordReader.filter(word -> word.length() == length);
+
+            wordsList = wordReader.collect(Collectors.toList());
+
+        } catch (IOException e) {
+            logger.error("Error read words.txt");
+        }
+
+        return wordsList;
     }
 
     /**
@@ -171,11 +288,46 @@ public class JumbleEngine {
      * @return  The list of sub words constructed from input `word`.
      */
     public Collection<String> generateSubWords(String word, Integer minLength) {
-        /*
-         * Refer to the method's Javadoc (above) and implement accordingly.
-         * Must pass the corresponding unit tests.
-         */
-        throw new UnsupportedOperationException("to be implemented");
+        List<String> wordsList = new ArrayList<>();
+        
+        final int length = minLength != null ? minLength : 3;
+
+        if(StringUtils.isBlank(word) || word.length() < length || length < 1)
+            return wordsList;
+
+        try(InputStream inputStream = new ClassPathResource(FILE_NAME).getInputStream();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream)) ) {
+
+            Stream<String> wordReader = reader.lines();  
+
+            wordsList = wordReader.filter(searchWord -> {
+
+                if(searchWord.length() < length || searchWord.equalsIgnoreCase(word))
+                    return false;
+
+                StringBuilder wordCopy = new StringBuilder(word);
+
+                List<String> searchCharacterList = Arrays.asList(searchWord.split(StringUtils.EMPTY));
+
+                boolean isMatch = true;
+                for(String searchCharacter: searchCharacterList) {
+                    int findIndex = wordCopy.indexOf(searchCharacter);
+                    
+                    if(findIndex == -1) {
+                        isMatch = false;
+                        break;
+                    }
+
+                    wordCopy.deleteCharAt(findIndex);
+                }
+                
+                return isMatch;
+            }).collect(Collectors.toList());
+        } catch (IOException e) {
+            logger.error("Error read words.txt");
+        }
+
+        return wordsList;
     }
 
     /**
