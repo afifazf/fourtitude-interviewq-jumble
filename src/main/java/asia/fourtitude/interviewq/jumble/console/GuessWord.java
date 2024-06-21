@@ -117,5 +117,9 @@ public class GuessWord extends AConsole {
         } while (! finish && ! exit);
         return exit;
     }
+    
+    public static void main(String[] args) {
+        new GuessWord(new Scanner(System.in), new PrintStream(System.out), new JumbleEngine()).exec();
+    }
 
 }
