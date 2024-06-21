@@ -1,8 +1,11 @@
 package asia.fourtitude.interviewq.jumble.controller;
 
+import java.util.Calendar;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -72,7 +75,7 @@ public class GameApiController {
                                                             "  \"total_words\": 29,\n" +
                                                             "  \"remaining_words\": 29,\n" +
                                                             "  \"guessed_words\": []\n" +
-                                                            "}") })) })
+                                                    "}") })) })
     @GetMapping(value = "/new", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GameGuessOutput> newGame() {
         /*
@@ -83,11 +86,33 @@ public class GameApiController {
 
         GameState gameState = this.jumbleEngine.createGameState(6, 3);
 
-        /*
-         * TODO:
-         * a) Store the game state to the repository, with unique game board ID
-         * b) Return the game board/state (GameGuessOutput) to caller
-         */
+        String uniqueId = UUID.randomUUID().toString();
+
+        GameGuessModel gameModel = new GameGuessModel();
+
+        Calendar calendar = Calendar.getInstance();
+
+        gameModel.setCreatedAt(calendar.getTime());
+
+        gameModel.setGameState(gameState);
+
+        gameModel.setId(uniqueId);
+
+        gameBoards.put(uniqueId, gameModel);   
+
+        output.setResult("Created new game.");
+
+        output.setId(uniqueId);
+
+        output.setOriginalWord(gameState.getOriginal());
+
+        output.setScrambleWord(gameState.getScramble());
+
+        output.setTotalWords(gameState.getSubWords().size());
+
+        output.setRemainingWords(gameState.getSubWords().size());
+
+        output.setGuessedWords(gameState.getGuessedWords());
 
         return new ResponseEntity<>(output, HttpStatus.OK);
     }
@@ -118,7 +143,7 @@ public class GameApiController {
                                                             "  \"guessed_words\": [\n" +
                                                             "    \"rank\"\n" +
                                                             "  ]\n" +
-                                                            "}"),
+                                                    "}"),
                                             @ExampleObject(
                                                     name = "Guessed Correctly Subsequent",
                                                     description = "Guessed correctly with subsequent word.",
@@ -140,7 +165,7 @@ public class GameApiController {
                                                             "    \"rube\",\n" +
                                                             "    \"urge\"\n" +
                                                             "  ]\n" +
-                                                            "}"),
+                                                    "}"),
                                             @ExampleObject(
                                                     name = "Guessed Incorrectly",
                                                     description = "Guessed with incorrect word.",
@@ -153,7 +178,7 @@ public class GameApiController {
                                                             "  \"total_words\": 15,\n" +
                                                             "  \"remaining_words\": 15,\n" +
                                                             "  \"guessed_words\": []\n" +
-                                                            "}"),
+                                                    "}"),
                                             @ExampleObject(
                                                     name = "All Guessed",
                                                     description = "All words guessed.",
@@ -176,7 +201,7 @@ public class GameApiController {
                                                             "    \"loom\",\n" +
                                                             "    \"gloom\"\n" +
                                                             "  ]\n" +
-                                                            "}") })),
+                                                    "}") })),
                     @ApiResponse(
                             responseCode = "404",
                             description = "Not Found",
@@ -189,13 +214,13 @@ public class GameApiController {
                                                     description = "The input `ID` is invalid.",
                                                     value = "{\n" +
                                                             "  \"result\": \"Invalid Game ID.\"\n" +
-                                                            "}"),
+                                                    "}"),
                                             @ExampleObject(
                                                     name = "Record not found",
                                                     description = "The `ID` is correct format, but game board/state is not found in system.",
                                                     value = "{\n" +
                                                             "  \"result\": \"Game board/state not found.\"\n" +
-                                                            "}") })) })
+                                                    "}") })) })
     @PostMapping(value = "/guess", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GameGuessOutput> playGame(
             @Parameter(
@@ -205,7 +230,7 @@ public class GameApiController {
                     example = "{\n" +
                             "  \"id\": \"4579256c-326f-4169-9b56-6d1d1a2c11f0\",\n" +
                             "  \"word\": \"answer\"\n" +
-                            "}")
+                    "}")
             @RequestBody GameGuessInput input) {
         /*
          * Refer to the method's Javadoc (above) and implement accordingly.
@@ -222,7 +247,57 @@ public class GameApiController {
          * e) Return the updated game board/state (GameGuessOutput) to caller
          */
 
+        String uniqueId = input.getId();
+
+        if(StringUtils.isBlank(uniqueId) ||
+                (StringUtils.isNotBlank(uniqueId) && !UUID.fromString(uniqueId).toString().equals(uniqueId))) {
+            output.setResult("Invalid Game ID.");
+            return new ResponseEntity<>(output, HttpStatus.NOT_FOUND);
+        }
+
+        if(!gameBoards.containsKey(uniqueId)) {            
+            output.setResult("Game board/state not found.");
+            return new ResponseEntity<>(output, HttpStatus.NOT_FOUND);
+        }
+
+        GameGuessModel gameModel = gameBoards.get(input.getId());
+
+        String word = input.getWord().trim();
+
+        GameState gameState = gameModel.getGameState();
+
+        boolean isGuessCorrect = gameState.updateGuessWord(word);
+
+        Calendar calendar = Calendar.getInstance();
+
+        gameModel.setModifiedAt(calendar.getTime());
+
+        int remaining = gameState.getSubWords().size() - gameState.getGuessedWords().size();
+
+        if(remaining == 0) {
+            output.setResult("All words guessed.");
+        } else {
+            if(isGuessCorrect) {
+                output.setResult("Guessed correctly.");
+            } else {
+                output.setResult("Guessed incorrectly.");
+            }
+        }
+
+        output.setId(gameModel.getId());
+
+        output.setOriginalWord(gameState.getOriginal());
+
+        output.setScrambleWord(gameState.getScramble());
+        
+        output.setGuessWord(input.getWord());
+
+        output.setTotalWords(gameState.getSubWords().size());
+
+        output.setRemainingWords(remaining);
+
+        output.setGuessedWords(gameState.getGuessedWords());
+
         return new ResponseEntity<>(output, HttpStatus.OK);
     }
-
 }
